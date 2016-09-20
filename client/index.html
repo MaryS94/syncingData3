@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://npmcdn.com/babel-core@5.8.38/browser.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+
+    <script type="text/babel" >
+        "use strict";
+
+        var canvas = document.getElementById('canvas');
+        var ctx = canvas.getContext('2d');
+        var drawQ = {};
+        const user = `user${(Math.floor((Math.random()*1000)) + 1)}`;
+
+
+        const init = () => {
+
+            var socket = io.connect();
+
+            const setup = () => {
+                const time = new Date().getTime();
+                let x = Math.random() * canvas.width;
+                let y = Math.random() * canvas.height;
+                drawQ[user] = {lastUpdate: time, x:x, y:y, width:50, height: 50}
+            }
+
+            setInterval( () =>
+            {
+                const time = new Date().getTime();
+
+                drawQ[user].lastUpdate = time;
+                drawQ[user].x +=5;
+
+
+                socket.emit('draw', {name: user, coords:drawQ[user]});
+                draw();
+
+            }, 3000)
+            
+            const draw = () => {
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                let keys = Object.keys(drawQ);
+
+                for(var i = 0; i < keys.length; i++){
+
+                    const drawCall = drawQ[keys[i]];
+
+                    if(i == 0) { ctx.fillStyle = "black";}
+                    else       { ctx.fillStyle = "red";}
+
+                    ctx.fillRect(drawCall.x, drawCall.y, drawCall.width, drawCall.height);
+                }
+            }   
+
+            const handleMessage = (data) => {
+                
+                if(!drawQ[data.name]){
+                    drawQ[data.name] = data.coords;
+                }
+                else if(data.coords.lastUpdate > drawQ[data.name].lastUpdate){
+                    drawQ[data.name] = data.coords;
+                }
+                draw();
+            }
+          
+            socket.on('draw', (data)=>{
+                handleMessage(data);
+            
+            });
+
+           setup();
+        };
+
+
+        window.onload = init;
+    
+    </script>
+</head>
+<body>
+    <canvas id="canvas" width="500" height="500"></canvas>
+</body>
+</html>
